@@ -47,8 +47,7 @@ Item:
 	- Base display 
 	- Save - close window 
 	- Connect with ADD Button
-	To do : 
-		- Send Info to SQL Data Base when Save clicked 
+	- Send Info to SQL Data Base when Save clicked 
 		
 ADD Button 
 	-click - open calls Item class 
@@ -62,8 +61,7 @@ ADD Button
 package Assignments; 
 
 //My SQL imports 
-import java.sql.Connection;
-import java.sql.DriverManager;
+import java.sql.*;
 import java.sql.SQLException;
 
 import java.awt.*;
@@ -73,7 +71,7 @@ import javax.swing.*;
 
 
 
-//region ITEM =================================================================================================
+//ITEM =================================================================================================
 class Item {
 	String name;
 	int id; //set-up later with auto_increment
@@ -153,17 +151,29 @@ class Item {
 			JOptionPane.showMessageDialog(null,ex+" : "+Qtt+" need to be an int ","Error", JOptionPane.ERROR_MESSAGE);
 			return;
 		}
-		//close ADD Item Window
+		CONNECTsql database = new CONNECTsql();
+		//cdt - no repeat of names - else database in disarray		
+		
+		try {database.WRITEsql(Name,INtqtt);}
+		catch(SQLIntegrityConstraintViolationException cons) {
+			JOptionPane.showMessageDialog(null,cons,"Error", JOptionPane.ERROR_MESSAGE);
+			return;
+		}
+		catch (SQLException ex) {
+		    ex.printStackTrace();
+		    JOptionPane.showMessageDialog(null,"Erreur SQL : " + ex,"Error", JOptionPane.ERROR_MESSAGE);
+		    return;
+		}
+		
+		database.READsql(Name);
 		ItemSetUp.dispose();
-		JOptionPane.showMessageDialog(null,"save "+Name+" and "+INtqtt+" into the data BASE ");
 	}
 }
-//endregion 
 
 //LEFT SIDE BASE =================================================================================
 //Instead of creating 6 panels - just one class to auto object 
 
-//region ITEMPanel ---------------------------------------------------------------------------------------------
+//ITEMPanel ---------------------------------------------------------------------------------------------
 
 class ItemPanel extends JPanel{	
 	
@@ -192,7 +202,6 @@ class ItemPanel extends JPanel{
         add(quantityLabel);
 	}
 }
-//endregion
 
 class REFRESH_btn extends JButton{ //Style class - because all button have the same class 
 	
@@ -257,12 +266,114 @@ class EXIT_btn extends Right_btn{
 	}
 }
 
+class CONNECTsql { 
+	String DB_URL = "jdbc:mysql://localhost:3306/factoryinventory"; 
+	String USER = "root"; 
+	String PASS = "surmaRoute54*"; 
+		
+	CONNECTsql(){ 
+		try { 
+			Connection con = DriverManager.getConnection(DB_URL,USER,PASS);
+			//System.out.println("DB = " + con.getCatalog()); //name of DB
+		} 
+		catch (SQLException exe) {exe.printStackTrace();return; }		
+	} 
+	
+	void WRITEsql(String Name, int Qtt)throws SQLException {
+		
+		Connection con = DriverManager.getConnection(DB_URL,USER,PASS);
+		Statement stmt = con.createStatement();
+			
+		String q1 = "INSERT INTO ITEM (nameItem,qttItem) VALUES ('"+Name+"','"+Qtt+"');";
+		int x = stmt.executeUpdate(q1);
+	    if (x > 0)            
+	    	System.out.println("Successfully Inserted");            
+	    else            
+	        System.out.println("Insert Failed");
+	    	con.close();
+	} 
+	
+	void READsql(String Name) {
+		try { 
+			Connection con = DriverManager.getConnection(DB_URL,USER,PASS);
+			Statement stmt = con.createStatement();
+			
+			String q1 = "SELECT nameItem,qttItem FROM ITEM WHERE nameItem = '"+Name+"';";
+			ResultSet rs = stmt.executeQuery(q1); //check if executed
+			if (rs.next())
+            {
+                System.out.println("Name :" + rs.getString(1));
+                System.out.println("qtt :" + rs.getInt(2));
+            }
+            else
+            {
+                System.out.println("No such user id is already registered");
+            }
+	        
+	        con.close();
+		} 
+		catch (SQLException exe) {exe.printStackTrace();return; }	
+	}
+	
+	void UPDATEsql(String Name, int qtt) { //update qtt by using name
+		try { 
+			Connection con = DriverManager.getConnection(DB_URL,USER,PASS);
+			Statement stmt = con.createStatement();
+			
+			String q1 = "UPDATE ITEM SET qttItem = '"+qtt+"' WHERE nameItem = '"+Name+"';";
+			int x = stmt.executeUpdate(q1);
+	        if (x > 0)            
+	            System.out.println("Successfully Updated");            
+	        else            
+	            System.out.println("Insert Failed");
+	        
+	        con.close();
+		} 
+		catch (SQLException exe) {exe.printStackTrace();return; }	
+	}
+	
+	void DELsql(String Name) {
+		try { 
+			Connection con = DriverManager.getConnection(DB_URL,USER,PASS);
+			Statement stmt = con.createStatement();
+			
+			String q1 = "DELETE FROM ITEM WHERE nameItem = '"+Name+"';";
+			int x = stmt.executeUpdate(q1);
+	        if (x > 0)            
+	            System.out.println("Successfully Deleted");            
+	        else            
+	            System.out.println("Insert Failed");
+	        
+	        con.close();
+		} 
+		catch (SQLException exe) {exe.printStackTrace();return; }	
+	}
+	
+} 
+
 
 public class FactoryInventoryToolManagement {
 	public static void main(String[] args){
 		
 		//CONNECTION TO SQL ====================================================
-		//CONNECTsql database = new CONNECTsql();
+		/*
+		CONNECTsql database = new CONNECTsql();
+		System.out.println("Initial DATA");
+		database.READsql();
+		
+		System.out.println("Change qtt DATA");
+		database.UPDATEsql("Arduino", 30);
+		database.READsql();
+		
+		System.out.println("Del DATA");
+		database.DELsql("Arduino");
+		database.READsql();
+		
+		System.out.println("ADD back DATA");
+		database.WRITEsql("Arduino", 11);
+		database.READsql();
+		*/
+		
 		
 		//INTERFACE ============================================================
 		//BASE-----------------
