@@ -51,10 +51,17 @@ Item:
 		
 ADD Button 
 	-click - open calls Item class 
-	-  when item class closes == save btn 
-	- read from database and add - Item to display - 
-		- fct to only display the 6 Item wih the lowest qtt 
-	
+	- when item class closes == save btn 
+		-Add item to QComboBox
+		-Call Refresh 
+		
+REFRESH Button
+	- read from database and 
+	- fct to only display the 6 Item wih the lowest qtt 
+		-add - Item to display - 
+		
+
+
 	
 */
 
@@ -67,6 +74,7 @@ import java.sql.SQLException;
 import java.awt.*;
 import java.awt.event.*;
 import javax.swing.*;
+import java.util.*;
 
 
 
@@ -164,8 +172,6 @@ class Item {
 		    JOptionPane.showMessageDialog(null,"Erreur SQL : " + ex,"Error", JOptionPane.ERROR_MESSAGE);
 		    return;
 		}
-		
-		database.READsql(Name);
 		ItemSetUp.dispose();
 	}
 }
@@ -174,14 +180,19 @@ class Item {
 //Instead of creating 6 panels - just one class to auto object 
 
 //ITEMPanel ---------------------------------------------------------------------------------------------
-
 class ItemPanel extends JPanel{	
 	
-	ItemPanel(String ItemName) {
+	//else cannot refreshItem in Main
+	private JButton button;
+    private JLabel quantityLabel;
+    
+	ItemPanel() {
 		setBackground(new Color(0xE2E6F5));
 		
-		JButton button = new JButton(ItemName);
-		JLabel quantityLabel = new JLabel("nbr", SwingConstants.CENTER);
+		button = new JButton("");
+		quantityLabel = new JLabel("", SwingConstants.CENTER);
+		quantityLabel.setOpaque(true);
+		
 		JLabel spacerL = new JLabel ("    ", SwingConstants.CENTER);
 		JLabel spacerR = new JLabel ("    ", SwingConstants.CENTER);
 
@@ -201,32 +212,22 @@ class ItemPanel extends JPanel{
         add(spacerR);
         add(quantityLabel);
 	}
-}
-
-class REFRESH_btn extends JButton{ //Style class - because all button have the same class 
 	
-	REFRESH_btn(){
-		super("REFRESH");
+	//modify name and qtt separately to change with refresh
+	void InfoItem(String itemName, int qtt) {
+		button.setText(itemName);
+		quantityLabel.setText(String.valueOf(qtt));
 		
-		setHorizontalTextPosition(SwingConstants.CENTER);
-		setBackground(new Color(0xFCFCFE));
-		setFocusPainted(false);
-		setBorderPainted(false);
-		//--------------
-		addActionListener(
-			new ActionListener() {
-				public void actionPerformed(ActionEvent e) {
-					JOptionPane.showMessageDialog(null,"REFRESH -Lower stock Items");
-				}
-			}			
-		);	
+		if (qtt < 10 && itemName != "") {
+			quantityLabel.setBackground(new Color(0xFFAB4C));
+		}
+		else {quantityLabel.setBackground(new Color(0xE2E6F5));}
 	}
 }
 
 //RIGHT SIDE BASE =================================================================================
 
 class Right_btn extends JButton{ //Style class - because all button have the same class 
-	
 	Right_btn(String btnName){
 		super(btnName); //give name to btn
 		
@@ -244,15 +245,14 @@ class Right_btn extends JButton{ //Style class - because all button have the sam
 //ADD
 class ADD_btn extends Right_btn{
 	ADD_btn() { super("ADD");} //gives back name
-	
 	void BtnClick() {
 		Item newItem = new Item();
+		// - acts like refresh button is clicked
 	}
 }
 //REMOVE
 class REMOVE_btn extends Right_btn{
 	REMOVE_btn() { super("REMOVE");} //gives back name
-	
 	void BtnClick() {
 		JOptionPane.showMessageDialog(null,"REMOVE- open page ask witch item to remove");
 	}
@@ -260,7 +260,6 @@ class REMOVE_btn extends Right_btn{
 //EXIT 
 class EXIT_btn extends Right_btn{
 	EXIT_btn() { super("EXIT");} //gives back name
-	
 	void BtnClick() {
 		JOptionPane.showMessageDialog(null,"Close everything and save in database");
 	}
@@ -270,7 +269,6 @@ class CONNECTsql {
 	String DB_URL = "jdbc:mysql://localhost:3306/factoryinventory"; 
 	String USER = "root"; 
 	String PASS = "surmaRoute54*"; 
-		
 	CONNECTsql(){ 
 		try { 
 			Connection con = DriverManager.getConnection(DB_URL,USER,PASS);
@@ -278,7 +276,6 @@ class CONNECTsql {
 		} 
 		catch (SQLException exe) {exe.printStackTrace();return; }		
 	} 
-	
 	void WRITEsql(String Name, int Qtt)throws SQLException {
 		
 		Connection con = DriverManager.getConnection(DB_URL,USER,PASS);
@@ -286,14 +283,11 @@ class CONNECTsql {
 			
 		String q1 = "INSERT INTO ITEM (nameItem,qttItem) VALUES ('"+Name+"','"+Qtt+"');";
 		int x = stmt.executeUpdate(q1);
-	    if (x > 0)            
-	    	System.out.println("Successfully Inserted");            
-	    else            
-	        System.out.println("Insert Failed");
-	    	con.close();
+	    if (x < 0)            
+	    	System.out.println("Insert Failed");
+    		con.close();            
 	} 
-	
-	void READsql(String Name) {
+	void READ1sql(String Name) {
 		try { 
 			Connection con = DriverManager.getConnection(DB_URL,USER,PASS);
 			Statement stmt = con.createStatement();
@@ -307,14 +301,46 @@ class CONNECTsql {
             }
             else
             {
-                System.out.println("No such user id is already registered");
+                System.out.println("No such user name");
             }
 	        
 	        con.close();
 		} 
 		catch (SQLException exe) {exe.printStackTrace();return; }	
 	}
-	
+	void READ6sql(ArrayList <String> Names, ArrayList <Integer> Qtts) {
+		//ckeck all items - only keep 6 of them;
+		try { 
+			Connection con = DriverManager.getConnection(DB_URL,USER,PASS);
+			Statement stmt = con.createStatement();
+			String q1 = "SELECT nameItem,qttItem FROM ITEM ORDER BY qttItem ASC LIMIT 6";
+			ResultSet rs = stmt.executeQuery(q1); //check if executed
+			while (rs.next()) {
+				String name = rs.getString("nameItem");
+				int qtt = rs.getInt("qttItem");
+				Names.add(name);
+				Qtts.add(qtt);
+	        }
+	        con.close();
+		} 
+		catch (SQLException exe) {exe.printStackTrace();return; }	
+	}
+	void READsql() {
+		try { 
+			Connection con = DriverManager.getConnection(DB_URL,USER,PASS);
+			Statement stmt = con.createStatement();
+			
+			String q1 = "SELECT nameItem,qttItem FROM ITEM";
+			ResultSet rs = stmt.executeQuery(q1); //check if executed
+			while (rs.next()) {
+	            String name = rs.getString("nameItem");
+	            int qtt = rs.getInt("qttItem");
+	            System.out.println("Name: " + name + ", qtt: " + qtt);
+	        }
+	        con.close();
+		} 
+		catch (SQLException exe) {exe.printStackTrace();return; }	
+	}
 	void UPDATEsql(String Name, int qtt) { //update qtt by using name
 		try { 
 			Connection con = DriverManager.getConnection(DB_URL,USER,PASS);
@@ -331,7 +357,6 @@ class CONNECTsql {
 		} 
 		catch (SQLException exe) {exe.printStackTrace();return; }	
 	}
-	
 	void DELsql(String Name) {
 		try { 
 			Connection con = DriverManager.getConnection(DB_URL,USER,PASS);
@@ -353,6 +378,24 @@ class CONNECTsql {
 
 
 public class FactoryInventoryToolManagement {
+	
+	static void CalculateLowestQtt(ArrayList <ItemPanel> ItemPanels) {
+		ArrayList <String> Names= new ArrayList<>();
+		ArrayList <Integer> Qtts= new ArrayList<>();
+		CONNECTsql database = new CONNECTsql();
+		database.READ6sql(Names, Qtts);
+		
+		//send thoses names as button names and qtt in Panel Items order
+		for (int i = 0; i < ItemPanels.size(); i++) {
+            if (i < Names.size()) {
+            	ItemPanels.get(i).InfoItem(Names.get(i), Qtts.get(i));
+            } else {
+                // less than 6 items - just empty
+            	ItemPanels.get(i).InfoItem("", 0);
+            }
+        }
+	}
+	
 	public static void main(String[] args){
 		
 		//CONNECTION TO SQL ====================================================
@@ -360,20 +403,19 @@ public class FactoryInventoryToolManagement {
 		CONNECTsql database = new CONNECTsql();
 		System.out.println("Initial DATA");
 		database.READsql();
-		
+
 		System.out.println("Change qtt DATA");
 		database.UPDATEsql("Arduino", 30);
 		database.READsql();
 		
 		System.out.println("Del DATA");
-		database.DELsql("Arduino");
+		
 		database.READsql();
 		
 		System.out.println("ADD back DATA");
 		database.WRITEsql("Arduino", 11);
 		database.READsql();
 		*/
-		
 		
 		//INTERFACE ============================================================
 		//BASE-----------------
@@ -388,33 +430,40 @@ public class FactoryInventoryToolManagement {
 		LeftPanel.setPreferredSize(new Dimension (375, 300));
 		LeftPanel.setLayout(new GridLayout(3, 3, 20,20));
 				
-		
+		//- ADD to Left Panel ----------------		
 		// add 6 nested panel in Left panel grid layout (best for 6 + (1,2) refresh btn ) 
-		//1---------------------------
-		ItemPanel Item1 = new ItemPanel("Item");
-		ItemPanel Item2 = new ItemPanel("Item");
-		ItemPanel Item3 = new ItemPanel("Item");
-		ItemPanel Item4 = new ItemPanel("Item");
-		ItemPanel Item5 = new ItemPanel("Item");
-		ItemPanel Item6 = new ItemPanel("Item");
+		ArrayList <ItemPanel> ItemPanels= new ArrayList<>();
+		for (int i =0; i<6; i++) {
+			ItemPanel p = new ItemPanel();
+			ItemPanels.add(p);
+			LeftPanel.add(p);
+		}
 		
-		REFRESH_btn btn_Refresh = new REFRESH_btn();
-			
+		// need to set-up refresh btn in main - else refresh cannot interact with LeftPanel
+		JButton btn_Refresh = new JButton(); 
+		btn_Refresh.setHorizontalTextPosition(SwingConstants.CENTER);
+		btn_Refresh.setBackground(new Color(0xFCFCFE));
+		btn_Refresh.setFocusPainted(false);
+		btn_Refresh.setBorderPainted(false);
+		//--------------
+		btn_Refresh.addActionListener(
+			new ActionListener() {
+				public void actionPerformed(ActionEvent e) {
+					CalculateLowestQtt(ItemPanels);
+					JOptionPane.showMessageDialog(null,"REFRESH -Lower stock Items");
+				}
+			}			
+		);
 		//Empty - make things pretty
 		JPanel Null = new JPanel();
 		Null.setBackground(new Color(0xFCFCFE));
 		
-		//- ADD to Left Panel ----------------
-		LeftPanel.add(Null, 0,0);
-		LeftPanel.add(btn_Refresh, 0,1);
 		
-		LeftPanel.add(Item2, 1,0);
-		LeftPanel.add(Item3, 2,0);
-		LeftPanel.add(Item4, 0,1);
-		LeftPanel.add(Item5, 1,1);
-		LeftPanel.add(Item6, 2,1);
-		LeftPanel.add(Item1, 1,2);
-		
+		LeftPanel.add(Null);
+		LeftPanel.add(btn_Refresh);
+		//refresh when launch 
+		CalculateLowestQtt(ItemPanels);
+
 		//RIGHT PANEL=============================================================
 		JPanel RightPanel = new JPanel();
 		RightPanel.setBackground(new Color(0xE2E6F5));
