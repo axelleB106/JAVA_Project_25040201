@@ -57,18 +57,25 @@ DELITEM
 ADD Button 
 	-click - open calls Item class 
 	- when item class closes == save btn 
-		-Add item to QComboBox
+		 - Qtt cannot be negative
 		
 REFRESH Button
 	- read from database and 
 	- fct to only display the 6 Item wih the lowest qtt 
-	-add - Item to display -
+	-add - Item to display 
+	-Update Combobox
 		
 ComboBox: 
-		-List all Item from database - no order 
-		- Add Item when Save clicked 
-		- Remove Item When DELETE Clicked 
+	-List all Item from database - no order 
+	- Add Item when Save clicked -->refresh 
+	- Remove Item When DELETE Clicked -->Refresh
 		- When item choosen --> act the same as Item name button 
+		
+ITEMWindow 
+		-Opens when Item Button is clicked 
+		- Open new Window to modify Item 
+		- Display Info from DataBase
+		- Btn - change Qtt - open new window - like add btn but only qtt
 
 	
 */
@@ -164,6 +171,10 @@ class ADDItem {
 		try {INtqtt = Integer.parseInt(Qtt);}
 		catch(NumberFormatException ex) {
 			JOptionPane.showMessageDialog(null,ex+" : "+Qtt+" need to be an int ","Error", JOptionPane.ERROR_MESSAGE);
+			return;
+		}
+		if (INtqtt < 0) {
+			JOptionPane.showMessageDialog(null,"Qtt cannot be Negative","Error", JOptionPane.ERROR_MESSAGE);
 			return;
 		}
 		CONNECTsql database = new CONNECTsql();
@@ -278,7 +289,8 @@ class ItemPanel extends JPanel{
         button.addActionListener(
 				new ActionListener() {
 					public void actionPerformed(ActionEvent e) {
-						JOptionPane.showMessageDialog(null,"Next-open Item Window");
+						String selectedName = button.getText();
+						new ItemWindow(selectedName);
 					}
 				}			
 			);
@@ -297,8 +309,84 @@ class ItemPanel extends JPanel{
 			quantityLabel.setBackground(new Color(0xF7C297));
 		}
 		else {quantityLabel.setBackground(new Color(0xE2E6F5));}
+	}	
+}
+
+class ItemWindow {
+	
+	ItemWindow(String ItemName){ 
+		
+		JFrame ItemSetUp = new JFrame ("ITEM");
+		ItemSetUp.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE); // Dispose - else everything closes 
+		ItemSetUp.setLocation(1020, 300); 
+		
+		//get Qtt from Name in database 
+		CONNECTsql database = new CONNECTsql();
+		int Qtt = database.READQttsql(ItemName);
+		
+		JLabel Name_Label = new JLabel(ItemName.toUpperCase());
+		JTextField Qtt_textfield = new JTextField(String.valueOf(Qtt));
+		
+		Qtt_textfield.setColumns(10);	
+		Qtt_textfield.setBorder(BorderFactory.createLineBorder(new Color(0xE2E6F5),2));
+		
+		//SAVE Button that save into the data BASE 
+		
+		JButton SAVE_btn = new JButton("SAVE");
+		SAVE_btn.setHorizontalTextPosition(SwingConstants.CENTER);
+		SAVE_btn.setBackground(new Color(0xE2E6F5));
+		SAVE_btn.setFocusPainted(false);
+		SAVE_btn.setBorderPainted(false);
+		
+		//--------------
+		SAVE_btn.addActionListener(e -> btnClick(ItemName, Qtt_textfield,ItemSetUp));
+		
+		//PRIMARY-----------------------------------
+		JPanel primary = new JPanel();
+		primary.setLayout(new GridLayout(3, 1, 5,5));
+		primary.setPreferredSize(new Dimension (150, 105));
+		primary.setBackground(new Color(0xFCFCFE));
+		
+		primary.add(Name_Label);	
+		primary.add(Qtt_textfield);	
+		primary.add(SAVE_btn);	
+		
+		//final 
+		ItemSetUp.getContentPane().add(primary);
+		ItemSetUp.pack();
+		ItemSetUp.setVisible(true);
+				
+	}
+	
+	void btnClick(String ItemName, JTextField Qtt_textfield,JFrame ItemSetUp) {
+		
+		String Qtt = Qtt_textfield.getText();
+		
+		//throwing exception
+		//Verify Qtt
+		if (Qtt.isEmpty()) {
+			JOptionPane.showMessageDialog(null,"Qtt cannot be empty","Error", JOptionPane.ERROR_MESSAGE);
+			return;
+		}
+		int INtqtt; //  the one we send to the database
+		try {INtqtt = Integer.parseInt(Qtt);}
+		catch(NumberFormatException ex) {
+			JOptionPane.showMessageDialog(null,ex+" : "+Qtt+" need to be an int ","Error", JOptionPane.ERROR_MESSAGE);
+			return;
+		}
+		if (INtqtt < 0) {
+			JOptionPane.showMessageDialog(null,"Qtt cannot be Negative","Error", JOptionPane.ERROR_MESSAGE);
+			return;
+		}
+		
+		//Update Database - with new qtt for Item 
+		CONNECTsql database = new CONNECTsql();
+		database.UPDATEsql(ItemName,INtqtt);
+		
+		ItemSetUp.dispose();
 	}
 }
+
 
 //SQL database =================================================================================
 
@@ -358,47 +446,40 @@ class CONNECTsql {
 			
 			String q1 = "UPDATE ITEM SET qttItem = '"+qtt+"' WHERE nameItem = '"+Name+"';";
 			int x = stmt.executeUpdate(q1);
-	        if (x > 0)            
-	            System.out.println("Successfully Updated");            
-	        else            
-	            System.out.println("Insert Failed");
+			if (x < 0) {System.out.println("Insert Failed");}
 	        
 	        con.close();
 		} 
 		catch (SQLException exe) {exe.printStackTrace();return; }	
 	}
-	void READ1sql(String Name) {
+	int READQttsql(String Name) {
+		int qtt = 0;
 		try { 
 			Connection con = DriverManager.getConnection(DB_URL,USER,PASS);
 			Statement stmt = con.createStatement();
 			
-			String q1 = "SELECT nameItem,qttItem FROM ITEM WHERE nameItem = '"+Name+"';";
+			String q1 = "SELECT qttItem FROM ITEM WHERE nameItem = '"+Name+"';";
 			ResultSet rs = stmt.executeQuery(q1); //check if executed
 			if (rs.next())
             {
-                System.out.println("Name :" + rs.getString(1));
-                System.out.println("qtt :" + rs.getInt(2));
+				qtt = rs.getInt(1);
+				return qtt; 
             }
-            else
-            {
-                System.out.println("No such user name");
-            }
-	        
 	        con.close();
 		} 
-		catch (SQLException exe) {exe.printStackTrace();return; }	
+		catch (SQLException exe) {exe.printStackTrace(); }	
+		return qtt; 
 	}
-	void READsql() {
+	void READsql(ArrayList <String> Names) {
 		try { 
 			Connection con = DriverManager.getConnection(DB_URL,USER,PASS);
 			Statement stmt = con.createStatement();
 			
-			String q1 = "SELECT nameItem,qttItem FROM ITEM";
-			ResultSet rs = stmt.executeQuery(q1); //check if executed
+			String q1 = "SELECT nameItem FROM ITEM";
+			ResultSet rs = stmt.executeQuery(q1);
 			while (rs.next()) {
 	            String name = rs.getString("nameItem");
-	            int qtt = rs.getInt("qttItem");
-	            System.out.println("Name: " + name + ", qtt: " + qtt);
+	            Names.add(name);
 	        }
 	        con.close();
 		} 
@@ -435,24 +516,9 @@ public class FactoryInventoryToolManagement {
 	
 	public static void main(String[] args){
 		
-		//CONNECTION TO SQL ====================================================
-		/*
+		//INIT ====================================================
+		ArrayList<String> Names= new ArrayList<>();	
 		CONNECTsql database = new CONNECTsql();
-		System.out.println("Initial DATA");
-		database.READsql();
-
-		System.out.println("Change qtt DATA");
-		database.UPDATEsql("Arduino", 30);
-		database.READsql();
-		
-		System.out.println("Del DATA");
-		
-		database.READsql();
-		
-		System.out.println("ADD back DATA");
-		database.WRITEsql("Arduino", 11);
-		database.READsql();
-		*/
 		
 		//INTERFACE ============================================================
 		//BASE-----------------
@@ -460,6 +526,67 @@ public class FactoryInventoryToolManagement {
 		mainFrame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		mainFrame.setLocation(500, 300); 
 		
+		//RIGHT PANEL=============================================================
+				
+		JPanel RightPanel = new JPanel();	
+		RightPanel.setBackground(new Color(0xE2E6F5));
+		RightPanel.setPreferredSize(new Dimension (125, 300));
+				
+		//JComboBox(E[] items): Creates a JComboBox populated with items from an array.
+		//take item list read in MySQL storage - if any 
+					
+		database.READsql(Names);
+		JComboBox<String> ComboBItemList = new JComboBox<>(); // Uneditable combobox --> use the name string 
+		//Combobox only takes String[]
+		for (String n : Names) {
+			ComboBItemList.addItem(n);
+		}
+		ComboBItemList.addActionListener(
+			new ActionListener() {
+				public void actionPerformed(ActionEvent e) {
+					String selectedName = (String) ComboBItemList.getSelectedItem();
+					new ItemWindow(selectedName);
+					}
+				}			
+			);
+		
+		//ADD BUTTON
+		JButton btn_ADD = new JButton("ADD");		
+		RightBtnStyle(btn_ADD);	
+		btn_ADD.addActionListener(
+			new ActionListener() {
+				public void actionPerformed(ActionEvent e) {
+					new ADDItem();	
+				}
+			}			
+		);
+				
+		JButton btn_REMOVE = new JButton("REMOVE");
+		RightBtnStyle(btn_REMOVE);	
+		btn_REMOVE.addActionListener(
+			new ActionListener() {
+				public void actionPerformed(ActionEvent e) {
+					new DELItem();
+				}
+			}			
+		);
+				
+		JButton btn_EXIT = new JButton("EXIT");
+		RightBtnStyle(btn_EXIT);	
+		btn_EXIT.addActionListener(
+			new ActionListener() {
+				public void actionPerformed(ActionEvent e) {
+					mainFrame.setVisible(false);
+					mainFrame.dispose();
+					System.exit(0);
+				}
+			}			
+		);
+								
+		RightPanel.add(ComboBItemList);
+		RightPanel.add(btn_ADD);
+		RightPanel.add(btn_REMOVE);
+		RightPanel.add(btn_EXIT);
 		
 		//LEFT PANEL=============================================================
 		JPanel LeftPanel = new JPanel();
@@ -487,6 +614,15 @@ public class FactoryInventoryToolManagement {
 			new ActionListener() {
 				public void actionPerformed(ActionEvent e) {
 					CalculateLowestQtt(ItemPanels);
+					//Remove and Add for combobox --> need to click save - however save is defined somewhere else 
+					// to difficult to set-up super event track 
+					ArrayList<String> Names= new ArrayList<>();	 // reset Names ArrayList
+					database.READsql(Names);
+					String[] nameArray = Names.toArray(new String[0]);
+					DefaultComboBoxModel<String> ComboBBuffer = new DefaultComboBoxModel<>(nameArray);
+
+					ComboBItemList.setModel(ComboBBuffer); // replace model - do not trigger action event
+
 				}
 			}			
 		);
@@ -499,53 +635,6 @@ public class FactoryInventoryToolManagement {
 		LeftPanel.add(btn_Refresh);
 		//refresh when launch 
 		CalculateLowestQtt(ItemPanels);
-
-		//RIGHT PANEL=============================================================
-		JPanel RightPanel = new JPanel();
-		RightPanel.setBackground(new Color(0xE2E6F5));
-		RightPanel.setPreferredSize(new Dimension (125, 300));
-		
-		//JComboBox(E[] items): Creates a JComboBox populated with items from an array.
-		//take item list read in MySQL storage - if any 
-		JComboBox ItemList = new JComboBox(); 
-		
-		//ADD BUTTON
-		JButton btn_ADD = new JButton("ADD");		
-		RightBtnStyle(btn_ADD);	
-		btn_ADD.addActionListener(
-			new ActionListener() {
-				public void actionPerformed(ActionEvent e) {
-					new ADDItem();
-				}
-			}			
-		);
-		
-		JButton btn_REMOVE = new JButton("REMOVE");
-		RightBtnStyle(btn_REMOVE);	
-		btn_REMOVE.addActionListener(
-			new ActionListener() {
-				public void actionPerformed(ActionEvent e) {
-					new DELItem();
-				}
-			}			
-		);
-		
-		JButton btn_EXIT = new JButton("EXIT");
-		RightBtnStyle(btn_EXIT);	
-		btn_EXIT.addActionListener(
-			new ActionListener() {
-				public void actionPerformed(ActionEvent e) {
-					mainFrame.setVisible(false);
-					mainFrame.dispose();
-					System.exit(0);
-				}
-			}			
-		);
-						
-		RightPanel.add(ItemList);
-		RightPanel.add(btn_ADD);
-		RightPanel.add(btn_REMOVE);
-		RightPanel.add(btn_EXIT);
 		
 		//PRIMARY PANEL===============================================================
 		JPanel nestedprimary = new JPanel();
@@ -553,7 +642,6 @@ public class FactoryInventoryToolManagement {
 		nestedprimary.add(LeftPanel);
 		nestedprimary.add(RightPanel);
 				
-		
 		//final 
 		mainFrame.getContentPane().add(nestedprimary);
 		mainFrame.pack();
